@@ -119,7 +119,9 @@ class term(object):
                             colsample_bytree=0.8, objective='binary:logistic', nthread=-1, scale_pos_weight=1)
         self.base_models = basemodel #基本模型
         self.LR=clf4 #逻辑回归
-        self.gbm = RandomForestClassifier(random_state=0,n_estimators=400,min_samples_leaf=5,min_samples_split=10,max_depth=13) #SVM分类器
+        #self.gbm = RandomForestClassifier(random_state=0,n_estimators=200,max_depth=13,min_samples_leaf=2,min_samples_split=40) #SVM分类器
+        self.gbm = GradientBoostingClassifier(random_state=0,n_estimators=500, learning_rate=0.1, min_samples_split=3,
+                                          min_samples_leaf=2, max_depth=5, verbose=0)
     def stacking(self,X,Y,T,wv_X,wv_T,kind):
         """
         ensemble model:stacking

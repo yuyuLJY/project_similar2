@@ -7,12 +7,10 @@ from gensim.models import word2vec
 from gensim import matutils
 import scipy
 import math
+from gensim import corpora, models
+from sklearn.decomposition import PCA
+from typing import List
 
-#TODO ：训练一个model
-#TODO 目的：创建两行新的列,对于每一个jb_no,都有一个对应的向量
-#TODO 对于每一个require_industry，也有一个向量
-
-#TODO 现在多了两列 describe_wv,industry_wv,由这两行产生新的一列：match_industry
 
 # 计算矩阵与向量余弦相识度
 def cosine_Matrix(_matrixA, vecB):
@@ -72,30 +70,11 @@ def sentenceByWordVectAvg(sentenceList, model, embeddingSize):
     print('求平均词向量完毕')
     return sentenceSet
 
-# 获取训练数据
-def gettrainDatalist(trainname):
-    """
-    将每一行的句子变成list
-    :param trainname:path
-    :return: list
-    """
-    traindata = []
-    with open(trainname, 'r', encoding='UTF-8') as f:
-        reader = csv.reader(f)
-        count = 0
-        for line in reader:
-            try:
-                traindata.append(line[0])
-                count += 1
-            except:
-                print("error:", line, count,line)
-                traindata.append(" ")
-    print('读取数据完毕')
-    return traindata
-
-def gettrainDatalist1(data_jieba):
+def gettrainDatalist(data_jieba):
     train_data = np.array(data_jieba)  # np.ndarray()
     train_x_list = train_data.tolist()  # list
+    #TODO 新添加的，需要修改ave_w2v函数
+    train_x_list = list(map(lambda x: x.split(' '), train_x_list))
     return train_x_list
 
 def saveIndex(sentence_vecs):
@@ -113,54 +92,9 @@ def saveIndex(sentence_vecs):
         index[docno] = vector
     return index
 
-
-def get_require_industry_wv(require_industry,model,size):
-    #require_industry:"工程造价 预结算"
-    #querylist = ["工程造价 预结算"]
-    if str(require_industry).__eq__('N'):
-        return 'N'  #期望的领域写“其他”，填上匹配度0.5
-    else:
-        querylist = []
-        querylist.append(require_industry)
-        query_wv = sentenceByWordVectAvg(querylist, model, size)[0]
-        #print(query_wv)
-        s = ""
-        for i in query_wv:
-            # row是一个列表
-            s = s + str(i) + " "
-        s = s.strip()
-        return s
-
-def get_list_vm(vm):
-    list = []
-    list.append(vm)
-    return list
-
-def write_industry_wv_tocsv(path, head, data):
-    try:
-        with open(path, 'w', newline='',encoding='utf8') as csv_file:
-            writer = csv.writer(csv_file)
-            if head is not None:
-                writer.writerow(head)
-            count=-1
-            for row in data:
-                #row是一个列表
-                count+=1
-                print(count)
-                s =""
-                if float(row[0])==0 and float(row[1])==0:
-                    writer.writerow('N')
-                else:
-                    for i in row:
-                        s = s + str(i) + " "
-                    s = s.strip()
-                    # writer.writerow('N')
-                    writer.writerow([s])
-    except Exception as e:
-        print("Write an CSV file to path: %s, Case: %s" % (path, e))
-
-def load_trainsform(X, model, size):
+def ave_w2v(X, model, size):
     """
+    方法1：计算向量的平均值
     载入模型，并且生成wv向量
     :param X:读入的文档，list
     :return:np.array
@@ -182,14 +116,141 @@ def load_trainsform(X, model, size):
             res[i] = res[i] / float(count)  # 求均值
     return res
 
-def get_wv(file_name,colunm,model,size,write_to_file,w_to_name):
+def list_dict(list_data):
+    list_data = list(map(lambda x: {str(x[0]): x[1]}, list_data))
+    dict_data = {}
+    for i in list_data:
+        key, = i
+        value, = i.values()
+        dict_data[key] = value
+    return dict_data
+
+def ave_ifidf_w2v(sentenceList, model, size):
+    '''
+    方法2：加入if-idf权重
+    :param sentenceList:
+    :param model:
+    :param size:
+    :return:
+    '''
+    dictionary = corpora.Dictionary(sentenceList)  ##得到词典
+    token2id = dictionary.token2id
+    corpus = [dictionary.doc2bow(text) for text in sentenceList]  ##统计每篇文章中每个词出现的次数:[(词编号id,次数number)]
+    print('dictionary prepared!')
+    tfidf = models.TfidfModel(corpus=corpus, dictionary=dictionary)
+    corpus_tfidf = tfidf[corpus]
+
+    sentenceSet = []
+    for i in range(len(sentenceList)):
+        # 将所有词向量的woed2vec向量相加到句向量
+        sentenceVector = np.zeros(size)
+        # 计算每个词向量的权重，并将词向量加到句向量
+        sentence = sentenceList[i]
+        sentence_tfidf = corpus_tfidf[i]
+        dict_tfidf = list_dict(sentence_tfidf)
+        for word in sentence:
+            try:
+                tifidf_weigth = dict_tfidf.get(str(token2id[word]))
+                sentenceVector = np.add(sentenceVector, tifidf_weigth * model[word])
+            except:
+                pass
+        sentenceVector = np.divide(sentenceVector, len(sentence))
+        # 存储句向量
+        sentenceSet.append(sentenceVector)
+    return np.array(sentenceSet)
+
+# ===============sentence2vec：词向量加权-PCA==================
+class Word:
+    def __init__(self, text, vector):
+        self.text = text
+        self.vector = vector
+
+    # a sentence, a list of words
+
+
+class Sentence:
+    def __init__(self, word_list):
+        self.word_list = word_list
+
+        # return the length of a sentence
+
+    def len(self) -> int:
+        return len(self.word_list)
+
+    # convert a list of sentence with word2vec items into a set of sentence vectors
+
+def w2v_pca(traindata,sentenceList: List[Sentence],embeddingSize,a: float = 1e-3):
+    '''
+    方法3：词向量加权-PCA
+    :param wdfs:
+    :param token2id:
+    :param sentenceList:
+    :param embeddingSize:
+    :param charLen:
+    :param a:
+    :return:
+    '''
+    dictionary = corpora.Dictionary(traindata)  ##得到词典
+    token2id = dictionary.token2id
+    corpus = [dictionary.doc2bow(text) for text in traindata]  ##统计每篇文章中每个词出现的次数:[(词编号id,次数number)]
+    tfidf = models.TfidfModel(corpus=corpus, dictionary=dictionary)
+    wdfs = tfidf.dfs
+
+    charLen = dictionary.num_pos
+    sentenceSet = []
+    for sentence in sentenceList:
+        sentenceVector = np.zeros(embeddingSize)
+        for word in sentence.word_list:
+            p = wdfs[token2id[word.text]] / charLen
+            a = a / (a + p)
+            sentenceVector = np.add(sentenceVector, np.multiply(a, word.vector))
+        if sentence.len()==0:
+            sentenceVector = np.zeros(embeddingSize)
+        else:
+            sentenceVector = np.divide(sentenceVector, sentence.len())
+        sentenceSet.append(sentenceVector)
+        # caculate the PCA of sentenceSet
+    pca = PCA(n_components=embeddingSize)
+    pca.fit(np.array(sentenceSet))
+    u = pca.components_[0]
+    u = np.multiply(u, np.transpose(u))
+
+    # occurs if we have less sentences than embeddings_size
+    if len(u) < embeddingSize:
+        for i in range(embeddingSize - len(u)):
+            u = np.append(u, [0])
+
+            # remove the projections of the average vectors on their first principal component
+    # (“common component removal”).
+    sentenceVectors = []
+    for sentenceVector in sentenceSet:
+        sentenceVectors.append(np.subtract(sentenceVector, np.multiply(u, sentenceVector)))
+    return np.array(sentenceVectors)
+
+def get_wv(file_name,colunm,model,size,write_to_file,w_to_name,methon):
     merge = pd.read_csv(file_name, sep=',', low_memory=False)
     type1_word = merge[colunm]
 
-    # 三个list的长度都是：648171
-    type1_list = gettrainDatalist1(type1_word)
+    type1_list = gettrainDatalist(type1_word)
 
-    type1_vecs = load_trainsform(type1_list, model, size)
+    #选择哪个方法：ave_w2v ave_ifidf_w2v
+    if methon=='ave_ifidf_w2v':
+        type1_vecs = ave_ifidf_w2v(type1_list, model, size)
+    if methon=='w2v_pca':
+        Sentence_list = []
+        for td in type1_list:
+            vecs = []
+            for s in td:
+                try:
+                    w = Word(s, model[s])
+                    vecs.append(w)
+                except:
+                    pass
+            if len(td) == 0:
+                vecs.append(0)
+            sentence = Sentence(vecs)
+            Sentence_list.append(sentence)
+        type1_vecs = w2v_pca(type1_list,Sentence_list,size)
 
     print(type1_vecs.shape)
     np.save('wv300_win100.'+write_to_file+'_'+w_to_name+'.npy', type1_vecs)
@@ -205,12 +266,13 @@ model = word2vec.Word2Vec.load('1size_win100_300.model')
 write_to_file_list = ['jieba_A_Title.csv', 'jieba_R_Title.csv', 'jieba_A_Content.csv', 'jieba_R_Content.csv']
 colunm_list = ['A_Title', 'R_Title', 'A_Content', 'R_Content']
 for i, j in zip(write_to_file_list, colunm_list):
-    get_wv('../1-prepare/'+i,j,model,size,'train',j)
+    #ave_ifidf_w2v w2v_pca
+    get_wv('../1-prepare/'+i,j,model,size,'train2',j,'ave_ifidf_w2v')
 '''
 
 #测试集
 write_to_file_list = ['test_jieba_A_Title.csv', 'test_jieba_R_Title.csv', 'test_jieba_A_Content.csv', 'test_jieba_R_Content.csv']
 colunm_list = ['A_Title', 'R_Title', 'A_Content', 'R_Content']
 for i, j in zip(write_to_file_list, colunm_list):
-    get_wv('../1-prepare/'+i,j,model,size,'test',j)
+    get_wv('../1-prepare/' + i, j, model, size, 'test2', j, 'ave_ifidf_w2v')
 

@@ -26,22 +26,15 @@ print('*'*60)
 print(data[['experience_similar','experience_jieba','power_d_jieba']].head(20))
 exit()
 '''
-#TODO 扔掉特征集合的某些特征
-'''
-data = pd.read_csv('feature_collection.csv', sep=',', low_memory=False)
-#print(data.columns)
-print(data.info())
-exit()
-data.drop(columns=['\\N', '中专', '中技', '初中', '博士', '大专',
-       '本科', '硕士', '高中', 'EMBA', 'LOSE', 'MBA', '中专.1', '中技.1', '其他', '初中.1',
-       '博士.1', '大专.1', '本科.1', '硕士.1', '高中.1'],inplace=True)
-data.to_csv("feature_collection.csv", sep=',', header=True, index=False, line_terminator="\n")
-exit()
-'''
 
-# TODO (1) 计算type相似度
-# 计算矩阵与向量余弦相识度
+# TODO 计算type相似度
 def count_wv_similar(wv1, wv2):
+    '''
+    计算矩阵与向量余弦相识度
+    :param wv1:
+    :param wv2:
+    :return:
+    '''
     list = []
     for i in range(wv1.shape[0]):
         row1 = wv1[i]
@@ -65,20 +58,33 @@ def count_wv_similar(wv1, wv2):
     data_frame = DataFrame({'type_similar': list})
     return data_frame
 
-type1_vecs = np.load('wv300_win100.test_A_Title.npy')
-type2_vecs = np.load('wv300_win100.test_R_Title.npy')
+label = 'train2'
+type1_vecs = np.load('wv300_win100.'+label+'_A_Title.npy')
+type2_vecs = np.load('wv300_win100.'+label+'_R_Title.npy')
 data_frame_type = count_wv_similar(type1_vecs, type2_vecs)
 title_similar = data_frame_type
 # print(merge[['browsed','type_similar','desire_jd_type_id','jd_sub_type']].head(100))
 
-type1_vecs = np.load('wv300_win100.test_A_Content.npy')
-type2_vecs = np.load('wv300_win100.test_R_Content.npy')
+type1_vecs = np.load('wv300_win100.'+label+'_A_Content.npy')
+type2_vecs = np.load('wv300_win100.'+label+'_R_Content.npy')
 data_frame_type = count_wv_similar(type1_vecs, type2_vecs)
 content_similar = data_frame_type
-print('完成工作类型相似度的匹配')
-
-#'content_similar':np.array(content_similar)}
 StackingSubmission = pd.DataFrame(title_similar)
 StackingSubmission['content_similar'] = content_similar
-StackingSubmission.to_csv('feature_collection_test.csv', sep=',', header=True, index=False, line_terminator="\n")
+print('完成工作类型相似度的匹')
+
+#TODO 求cont的长度
+def content_length(a,r):
+    return abs(len(a)-len(r))
+merge = pd.read_csv('../1-prepare/train_merge.csv', sep=',', low_memory=False)
+merge['A_Content'] = merge.A_Content.fillna('U')
+merge['R_Content'] = merge.R_Content.fillna('U')
+merge['Content_length_gap'] = merge.apply(lambda x: content_length(x['A_Content'],x['R_Content']), axis=1)
+#merge['Content_length_gap'] = (merge['Content_length_gap'] - merge['Content_length_gap'].min()) / \
+#                              (merge['Content_length_gap'].max() - merge['Content_length_gap'].min())
+#用mean归一化
+merge['Content_length_gap'] = (merge['Content_length_gap'] - merge['Content_length_gap'].mean()) / merge[
+    'Content_length_gap'].std()
+StackingSubmission['Content_length_gap'] = merge['Content_length_gap']
+StackingSubmission.to_csv('feature_collection_'+label+'.csv', sep=',', header=True, index=False, line_terminator="\n")
 

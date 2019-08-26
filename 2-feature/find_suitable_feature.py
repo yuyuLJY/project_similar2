@@ -82,14 +82,14 @@ def get_top_n_features(titanic_train_data_X, titanic_train_data_Y, top_n_feature
 
     # randomforest
     print('================randomforest==================')
-    rf_est = RandomForestClassifier(random_state=0)
-    rf_param_grid = {'n_estimators':range(10,71,10)}
+    rf_est = RandomForestClassifier(random_state=0,n_estimators=50,max_depth=13,min_samples_leaf=2,min_samples_split=40)
+    rf_param_grid = {'max_depth':range(2,14,1)}
     rf_grid = GridSearchCV(rf_est, rf_param_grid, n_jobs=1, cv=3, verbose=1)
     rf_grid.fit(titanic_train_data_X, titanic_train_data_Y)
 
     # 计算
-    y_predprob = rf_grid.predict_proba(titanic_train_data_X)[:, 1]
-    print("AUC Score (Train): %f" % metrics.roc_auc_score(titanic_train_data_Y, y_predprob))
+    #y_predprob = rf_grid.predict_proba(titanic_train_data_X)[:, 1]
+    #print("AUC Score (Train): %f" % metrics.roc_auc_score(titanic_train_data_Y, y_predprob))
     means = rf_grid.cv_results_['mean_test_score']
     params = rf_grid.cv_results_['params']
     for i, j in zip(means, params):
@@ -202,7 +202,7 @@ train_merge = pd.read_csv('../1-prepare/train_merge.csv', sep=',', low_memory=Fa
 # print('训练数据读取完毕')
 
 # TODO 相似性
-f1 = pd.read_csv('feature_collection_train.csv', sep=',', low_memory=False)
+f1 = pd.read_csv('feature_collection_train2.csv', sep=',', low_memory=False)
 
 # TODO 读取特征
 type1_vecs = np.load('wv300_win100.train_A_Title.npy')  # 10W行
@@ -212,10 +212,11 @@ type4_vecs = np.load('wv300_win100.train_R_Content.npy')
 
 # 变成
 feature = np.concatenate((type1_vecs, type2_vecs, type3_vecs, type4_vecs), axis=1)
-feature = reduce_pca(feature, 'c', 0.4)
+feature = reduce_pca(feature, 'c', 0.38)
 print('完成降维处理')
 train_feature = pd.DataFrame(feature)
 train_data_X = pd.concat([train_feature, f1], axis=1)
+print(train_data_X.info())
 
 train_data_Y = train_merge['Level']  #
 feature_to_pick = 20  # 挑选出几个特征

@@ -73,10 +73,10 @@ if __name__ == '__main__':
     注意路径
     """
     start = time.time()
-    #order = 'predict'  # execute predict function
+    order = 'predict'  # execute predict function
     order='test' #execute 2-fold validation function
     #order = 'combine'
-    print('orderis ', order)
+    #print('orderis ', order)
     print('----------start----------')
 
     if order == 'test':
@@ -87,7 +87,7 @@ if __name__ == '__main__':
         #print('训练数据读取完毕')
 
         #TODO 相似性
-        f1 = pd.read_csv('../2-feature/feature_collection_train.csv', sep=',', low_memory=False)
+        f1 = pd.read_csv('../2-feature/feature_collection_train2.csv', sep=',', low_memory=False)
 
         #TODO 读取特征
         type1_vecs = np.load('../2-feature/wv300_win100.train_A_Title.npy') #10W行
@@ -97,12 +97,15 @@ if __name__ == '__main__':
 
         #变成
         feature = np.concatenate((type1_vecs,type2_vecs,type3_vecs,type4_vecs),axis=1)
-        feature = reduce_pca(feature, 'c',0.4)
+        feature = reduce_pca(feature, 'c',0.37)
         print('完成降维处理')
         train_feature = pd.DataFrame(feature)
+        #f1[['type_similar','content_similar']]
         train_feature = pd.concat([train_feature,f1], axis=1)
+        print('所有特征')
+        print(train_feature.info())
         # 进行三折运算
-        kf = KFold(n_splits=2, shuffle=False, random_state=1)
+        kf = KFold(n_splits=3, shuffle=False, random_state=1)
         predictions = []
         for train, test in kf.split(train_feature):
             # The predictors we're using to train the algorithm.  Note how we only take then rows in the train folds.
@@ -155,7 +158,7 @@ if __name__ == '__main__':
 
             # 变成
             feature = np.concatenate((type1_vecs, type2_vecs, type3_vecs, type4_vecs), axis=1)
-            feature = reduce_pca(feature, 'c', 0.4)
+            feature = reduce_pca(feature, 'c', 0.45)
             print('完成降维处理')
             train_feature = pd.DataFrame(feature)
             if i==0:
@@ -183,7 +186,7 @@ if __name__ == '__main__':
         #StackingSubmission['jd_no'] = train_merge['jd_no']
         order =['L_ID','Level']
         StackingSubmission = StackingSubmission[order]
-        StackingSubmission.to_csv('StackingSubmission.csv', sep=',', header=True, index=False, line_terminator="\n")
+        StackingSubmission.to_csv('StackingSubmission.csv', sep=',', header=False, index=False, line_terminator="\n")
         # StackingSubmission = pd.DataFrame({'browsed': browsed, 'delivered':delivered,'satisfied':satisfied})
     elif order =='combine':
         #将type的向量和city edu向量结合起来
