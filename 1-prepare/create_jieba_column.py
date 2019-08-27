@@ -32,6 +32,24 @@ def jieba_cut(text):
         return 'N'
     return final_str
 
+def stopwordslist():
+    stopwords = [line.strip() for line in open('chinsesstoptxt.txt',encoding='UTF-8').readlines()]
+    return stopwords
+
+def jieba_cut2(text):
+    #创建停用词表
+    stopwords = stopwordslist()
+    content_seg = jieba.cut(text)    # jieba分词
+    print("jieba分词后：",content_seg)
+    newString = ''
+    for word in content_seg:
+        if word not in stopwords:
+            newString += word
+            newString += ''
+
+    return newString
+
+
 def read_text(filename,writefile):
     # 读入训练数据
     train_data2 = pd.read_csv(filename, sep=',', low_memory=False)

@@ -5,6 +5,7 @@
       <option name="ignoredIdentifiers">
         <list>
           <option value="classify" />
+          <option value="genism" />
         </list>
       </option>
     </inspection_tool>

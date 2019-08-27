@@ -58,7 +58,7 @@ def count_wv_similar(wv1, wv2):
     data_frame = DataFrame({'type_similar': list})
     return data_frame
 
-label = 'train2'
+label = 'test2'
 type1_vecs = np.load('wv300_win100.'+label+'_A_Title.npy')
 type2_vecs = np.load('wv300_win100.'+label+'_R_Title.npy')
 data_frame_type = count_wv_similar(type1_vecs, type2_vecs)
@@ -76,7 +76,7 @@ print('完成工作类型相似度的匹')
 #TODO 求cont的长度
 def content_length(a,r):
     return abs(len(a)-len(r))
-merge = pd.read_csv('../1-prepare/train_merge.csv', sep=',', low_memory=False)
+merge = pd.read_csv('../1-prepare/test_merge.csv', sep=',', low_memory=False)
 merge['A_Content'] = merge.A_Content.fillna('U')
 merge['R_Content'] = merge.R_Content.fillna('U')
 merge['Content_length_gap'] = merge.apply(lambda x: content_length(x['A_Content'],x['R_Content']), axis=1)

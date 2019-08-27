@@ -74,7 +74,7 @@ if __name__ == '__main__':
     """
     start = time.time()
     order = 'predict'  # execute predict function
-    order='test' #execute 2-fold validation function
+    #order='test' #execute 2-fold validation function
     #order = 'combine'
     #print('orderis ', order)
     print('----------start----------')
@@ -144,7 +144,7 @@ if __name__ == '__main__':
         print('===============================END=====================')
         exit()
     elif order == 'predict':
-        list_two = ['train','test']
+        list_two = ['train2','test2']
         for i in range(len(list_two)):
             # TODO 相似性
             cur = list_two[i]
@@ -158,13 +158,17 @@ if __name__ == '__main__':
 
             # 变成
             feature = np.concatenate((type1_vecs, type2_vecs, type3_vecs, type4_vecs), axis=1)
-            feature = reduce_pca(feature, 'c', 0.45)
+            feature = reduce_pca(feature, 'c', 0.37)
             print('完成降维处理')
             train_feature = pd.DataFrame(feature)
             if i==0:
                 feature_train = pd.concat([train_feature, f1], axis=1)
+                print('训练数据')
+                print(feature_train.info())
             else:
                 feature_test = pd.concat([train_feature, f1], axis=1)
+                print('测试数据')
+                print(feature_test.info())
 
         #TODO 标签label
         train_merge = pd.read_csv('../1-prepare/train_merge.csv', sep=',', low_memory=False)
